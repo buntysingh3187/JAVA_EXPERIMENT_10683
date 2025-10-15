@@ -1,0 +1,24 @@
+{
+  "rules": [
+    {
+      "condition": "always",
+      "commandType": "vscode",
+      "command": "studio-manager.openFile Main.java 1"
+    },
+    {
+      "condition": "always",
+      "commandType": "vscode",
+      "command": "studio-manager.openTerminal",
+      "cmdArgs": [
+        "java Main.java",
+        {
+          "name": "java",
+          "location": {
+            "viewColumn": 2
+          }
+        }
+      ],
+      "delay": 2500
+    }
+  ]
+}
