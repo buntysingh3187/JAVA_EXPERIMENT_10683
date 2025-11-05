@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Spring Hibernate Demo</title>
+  <style> body{font-family:Segoe UI,Arial;padding:2rem;background:#f7fafc} a{color:#0366d6} .card{background:white;padding:1rem;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.08);max-width:720px}</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Spring Hibernate Demo</h1>
+    <p>Welcome — the REST demo is running. Use the UI below to interact with the APIs.</p>
+
+    <section>
+      <h2>Students</h2>
+      <div id="students-list">Loading students...</div>
+      <div style="margin-top:.5rem">
+        <a id="raw-students-link" href="/api/students" target="_blank">Open raw students (JSON)</a>
+      </div>
+
+      <h3>Create student</h3>
+      <form id="create-student-form">
+        <input id="s-name" placeholder="Name" required />
+        <input id="s-email" placeholder="Email" required />
+        <input id="s-age" placeholder="Age" type="number" required />
+        <button type="submit">Create</button>
+      </form>
+      <div id="create-student-result" style="margin-top:.5rem;color:green"></div>
+    </section>
+
+    <hr />
+
+    <section>
+      <h2>Bank transfer</h2>
+      <form id="transfer-form">
+        <input id="from-id" placeholder="From account id" type="number" required />
+        <input id="to-id" placeholder="To account id" type="number" required />
+        <input id="amount" placeholder="Amount" type="number" step="0.01" required />
+        <label><input id="fail-after-debit" type="checkbox" /> Fail after debit (test rollback)</label>
+        <button type="submit">Transfer</button>
+      </form>
+      <div id="transfer-result" style="margin-top:.5rem;color:green"></div>
+    </section>
+
+    <p style="margin-top:1rem;color:#666">If you prefer CLI, use <code>curl.exe</code> from your terminal as documented below.</p>
+    <pre>curl.exe -H "Content-Type: application/json" -d "{\"name\":\"Alice\",\"email\":\"a@ex.com\",\"age\":21}" -X POST http://localhost:8080/api/students</pre>
+    <p style="margin-top:.5rem;color:#666">Note: use the POST button below for transfers (browser GET will return 405).</p>
+  </div>
+
+  <script>
+    async function loadStudents() {
+      const container = document.getElementById('students-list');
+      try {
+        const res = await fetch('/api/students');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        if (!Array.isArray(data)) {
+          container.innerText = 'Unexpected response: ' + JSON.stringify(data);
+          return;
+        }
+        if (data.length === 0) {
+          container.innerHTML = '<em>No students yet</em>';
+          return;
+        }
+        const ul = document.createElement('ul');
+        data.forEach(s => {
+          const li = document.createElement('li');
+          li.textContent = `#${s.id} ${s.name} (${s.email}) age ${s.age}`;
+          ul.appendChild(li);
+        });
+        container.innerHTML = '';
+        container.appendChild(ul);
+      } catch (err) {
+        container.innerText = 'Failed to load students: ' + err;
+      }
+    }
+
+    document.getElementById('create-student-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const name = document.getElementById('s-name').value;
+      const email = document.getElementById('s-email').value;
+      const age = parseInt(document.getElementById('s-age').value, 10);
+      const out = document.getElementById('create-student-result');
+      out.style.color = 'green';
+      out.textContent = 'Creating...';
+      try {
+        const res = await fetch('/api/students', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({name, email, age})
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const s = await res.json();
+        out.textContent = 'Created id=' + s.id;
+        document.getElementById('create-student-form').reset();
+        loadStudents();
+      } catch (err) {
+        out.style.color = 'red';
+        out.textContent = 'Create failed: ' + err;
+      }
+    });
+
+    document.getElementById('transfer-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const fromId = parseInt(document.getElementById('from-id').value, 10);
+      const toId = parseInt(document.getElementById('to-id').value, 10);
+      const amount = parseFloat(document.getElementById('amount').value);
+      const failAfterDebit = document.getElementById('fail-after-debit').checked;
+      const out = document.getElementById('transfer-result');
+      out.style.color = 'green';
+      out.textContent = 'Transferring...';
+      try {
+        const res = await fetch('/api/bank/transfer', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({fromId, toId, amount, failAfterDebit})
+        });
+        const text = await res.text();
+        if (!res.ok) {
+          out.style.color = 'red';
+          out.textContent = `Failed (${res.status}): ${text}`;
+        } else {
+          out.style.color = 'green';
+          out.textContent = text || 'Transfer completed';
+        }
+      } catch (err) {
+        out.style.color = 'red';
+        out.textContent = 'Transfer failed: ' + err;
+      }
+    });
+
+    // Initial load
+    loadStudents();
+  </script>
+</body>
+</html>
